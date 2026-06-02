@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Dashboard — Drone Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+
+<!-- ── Top Nav ───────────────────────────────────────── -->
+<nav class="nav-top">
+  <a href="index.html" class="nav-brand">
+    <span class="nav-icon">🚁</span>
+    <span>Drone Ctrl</span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link active">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="control.html" class="nav-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      Controller
+    </a>
+    <a href="settings.html" class="nav-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Settings
+    </a>
+  </div>
+  <div class="nav-right">
+    <div id="conn-badge">
+      <span id="conn-dot"></span>
+      <span id="conn-label">DISCONNECTED</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ── URL Config Banner ──────────────────────────────── -->
+<div id="url-banner" class="url-banner">
+  <span class="url-banner-label">Server URL</span>
+  <div class="flex grow gap-2" style="min-width:200px">
+    <input id="drone-url" class="input grow" type="url" placeholder="https://your-drone.ngrok-free.app" autocomplete="off" spellcheck="false">
+    <button id="url-save" class="btn btn-p">Connect</button>
+  </div>
+  <span class="text3" style="font-size:.75rem">Enter your ngrok or local IP URL</span>
+</div>
+
+<!-- ── Main ──────────────────────────────────────────── -->
+<main class="page">
+
+  <!-- Status Pills -->
+  <div class="status-bar">
+    <div class="stat-pill"><span class="pill-label">Mode</span><span id="pill-mode" class="pill-val blue">--</span></div>
+    <div class="stat-pill"><span class="pill-label">Armed</span><span id="pill-armed" class="pill-val">--</span></div>
+    <div class="stat-pill"><span class="pill-label">Alt</span><span id="pill-alt" class="pill-val">--</span></div>
+    <div class="stat-pill"><span class="pill-label">Bat</span><span id="pill-bat" class="pill-val">--</span></div>
+    <div class="stat-pill"><span class="pill-label">GPS</span><span id="pill-gps" class="pill-val">--</span></div>
+  </div>
+
+  <!-- Dashboard Grid: controls HTML-first so they appear on top on mobile -->
+  <div class="dash-grid">
+
+    <!-- Controls (right col on desktop, top on mobile) -->
+    <div class="dash-ctrl flex-col gap-3">
+
+      <!-- Critical Actions -->
+      <div class="card">
+        <div class="card-title"><span class="accent r"></span>Critical Actions</div>
+        <div class="act-grid mb-3">
+          <button class="btn btn-s btn-lg" onclick="Drone.api('/arm')">Arm</button>
+          <button class="btn btn-w btn-lg" onclick="Drone.api('/disarm')">Disarm</button>
+          <button class="btn btn-f btn-lg" onclick="Drone.api('/land')">Land</button>
+          <button class="btn btn-f btn-lg" onclick="Drone.api('/rtl')">RTL</button>
+          <button class="btn btn-f btn-lg" onclick="Drone.api('/hold')">Hold</button>
+          <div class="flex-col gap-1">
+            <label class="label">Alt (m)</label>
+            <input id="tkalt" class="input" type="number" value="2" min="0.5" max="10" step="0.5">
+          </div>
+        </div>
+        <button class="btn btn-s btn-xl mb-3" onclick="doTakeoff()">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+          Takeoff
+        </button>
+        <button class="btn btn-em btn-xl" onclick="Drone.api('/emergency')">
+          ⚠ Emergency Stop
+        </button>
+      </div>
+
+      <!-- Flight Mode -->
+      <div class="card">
+        <div class="card-title"><span class="accent"></span>Flight Mode</div>
+        <div class="flex gap-2">
+          <select id="fmode" class="select">
+            <option>STABILIZE</option><option>ALTHOLD</option><option>LOITER</option>
+            <option>GUIDED</option><option>GUIDED_NOGPS</option><option>LAND</option>
+            <option>RTL</option><option>AUTO</option><option>POSHOLD</option>
+          </select>
+          <button class="btn btn-p" onclick="Drone.api('/mode',{mode:document.getElementById('fmode').value})">Apply</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Telemetry (left col on desktop, below controls on mobile) -->
+    <div class="card dash-tel">
+      <div class="card-title"><span class="accent"></span>Live Telemetry</div>
+      <div class="tel-grid">
+        <div class="tel-item"><div class="tel-label">Mode</div><div id="tel-mode" class="tel-val sm w">--</div></div>
+        <div class="tel-item"><div class="tel-label">Armed</div><div id="tel-armed" class="tel-val g">--</div></div>
+        <div class="tel-item"><div class="tel-label">Altitude</div><div id="tel-alt" class="tel-val sm">--</div></div>
+        <div class="tel-item"><div class="tel-label">Battery</div><div id="tel-bat" class="tel-val g">--</div></div>
+        <div class="tel-item"><div class="tel-label">Bat %</div><div id="tel-batpct" class="tel-val sm w">--</div></div>
+        <div class="tel-item"><div class="tel-label">Satellites</div><div id="tel-sats" class="tel-val">--</div></div>
+        <div class="tel-item"><div class="tel-label">GPS Fix</div><div id="tel-gps" class="tel-val sm g">--</div></div>
+        <div class="tel-item"><div class="tel-label">GndSpeed</div><div id="tel-spd" class="tel-val sm">--</div></div>
+        <div class="tel-item"><div class="tel-label">AirSpeed</div><div id="tel-airspd" class="tel-val sm">--</div></div>
+        <div class="tel-item"><div class="tel-label">Latitude</div><div id="tel-lat" class="tel-val xs w">--</div></div>
+        <div class="tel-item"><div class="tel-label">Longitude</div><div id="tel-lon" class="tel-val xs w">--</div></div>
+        <div class="tel-item"><div class="tel-label">Pitch</div><div id="tel-pitch" class="tel-val sm w">--</div></div>
+        <div class="tel-item"><div class="tel-label">Roll</div><div id="tel-roll" class="tel-val sm w">--</div></div>
+        <div class="tel-item"><div class="tel-label">Yaw</div><div id="tel-yaw" class="tel-val sm w">--</div></div>
+        <div class="tel-item"><div class="tel-label">EKF</div><div id="tel-ekf" class="tel-val sm">--</div></div>
+        <div class="tel-item"><div class="tel-label">Armable</div><div id="tel-arm2" class="tel-val sm">--</div></div>
+        <div class="tel-item"><div class="tel-label">Vibe X</div><div id="tel-vx" class="tel-val sm w">--</div></div>
+        <div class="tel-item"><div class="tel-label">Vibe Y</div><div id="tel-vy" class="tel-val sm w">--</div></div>
+        <div class="tel-item"><div class="tel-label">Vibe Z</div><div id="tel-vz" class="tel-val sm w">--</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Console -->
+  <div class="card">
+    <div class="card-title flex justify-b items-c" style="margin-bottom:.5rem">
+      <span class="flex items-c gap-2"><span class="accent g"></span>Console Output</span>
+      <button class="btn btn-g btn-sm" onclick="document.getElementById('console-log').innerHTML=''">Clear</button>
+    </div>
+    <div id="console-log" class="con-box con-main">
+      <div class="log-row"><span class="log-time">--:--:--</span><span class="log-msg" style="color:var(--text3)">System ready — enter server URL to connect</span></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Bottom Tab Nav ─────────────────────────────────── -->
+<nav class="nav-bottom">
+  <div class="tab-links">
+    <a href="index.html" class="tab-link active">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="control.html" class="tab-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Control
+    </a>
+    <a href="settings.html" class="tab-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Settings
+    </a>
+  </div>
+</nav>
+
+<script src="static/js/core.js"></script>
+<script>
+  function doTakeoff() {
+    const alt = parseFloat(document.getElementById('tkalt').value) || 2;
+    Drone.api('/takeoff', { altitude: alt });
+  }
+</script>
+</body>
+</html>

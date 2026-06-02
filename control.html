@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Controller — Drone Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <style>
+    /* Extra controller styles */
+    .ctrl-section-label {
+      font-size: .5625rem; font-weight: 800; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--text3);
+      text-align: center; margin-bottom: .5rem;
+    }
+    .param-row {
+      display: flex; gap: .5rem; align-items: center;
+      padding: .875rem 1.125rem;
+      background: var(--s1); border: 1px solid var(--bdr);
+      border-radius: var(--r); flex-wrap: wrap;
+    }
+    .param-row label { font-size: .6875rem; font-weight: 600; color: var(--text2); white-space: nowrap; }
+    .param-input { width: 72px; }
+    .yaw-deg-input { width: 64px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Nav ───────────────────────────────────────── -->
+<nav class="nav-top">
+  <a href="index.html" class="nav-brand">
+    <span class="nav-icon">🚁</span>
+    <span>Drone Ctrl</span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="control.html" class="nav-link active">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Controller
+    </a>
+    <a href="settings.html" class="nav-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Settings
+    </a>
+  </div>
+  <div class="nav-right">
+    <div id="conn-badge">
+      <span id="conn-dot"></span>
+      <span id="conn-label">DISCONNECTED</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ── URL Config Banner ──────────────────────────────── -->
+<div id="url-banner" class="url-banner">
+  <span class="url-banner-label">Server URL</span>
+  <div class="flex grow gap-2" style="min-width:200px">
+    <input id="drone-url" class="input grow" type="url" placeholder="https://your-drone.ngrok-free.app" autocomplete="off" spellcheck="false">
+    <button id="url-save" class="btn btn-p">Connect</button>
+  </div>
+</div>
+
+<!-- ── Main ──────────────────────────────────────────── -->
+<main class="page">
+
+  <!-- Status Pills -->
+  <div class="status-bar">
+    <div class="stat-pill"><span class="pill-label">Mode</span><span id="pill-mode" class="pill-val blue">--</span></div>
+    <div class="stat-pill"><span class="pill-label">Armed</span><span id="pill-armed" class="pill-val">--</span></div>
+    <div class="stat-pill"><span class="pill-label">Alt</span><span id="pill-alt" class="pill-val">--</span></div>
+    <div class="stat-pill"><span class="pill-label">Battery</span><span id="pill-bat" class="pill-val">--</span></div>
+    <div class="stat-pill"><span class="pill-label">GPS</span><span id="pill-gps" class="pill-val">--</span></div>
+    <div class="stat-pill" style="margin-left:auto">
+      <span class="pill-label">Yaw°</span>
+      <span id="tel-yaw" class="pill-val blue">--</span>
+    </div>
+  </div>
+
+  <!-- Gamepad Shell -->
+  <div class="gp-shell mb-3">
+
+    <!-- Zone labels row (desktop only) -->
+    <div class="gp-grid desk-only" style="margin-bottom:.375rem">
+      <p class="ctrl-section-label">Altitude</p>
+      <p class="ctrl-section-label">Directional</p>
+      <p class="ctrl-section-label">Rotation</p>
+    </div>
+
+    <!-- Controls grid -->
+    <div class="gp-grid">
+
+      <!-- Altitude -->
+      <div class="ctrl-section-label mob-only" style="grid-column:1/-1">Altitude</div>
+      <div class="alt-stack" id="alt-zone">
+        <button class="alt-btn up" id="btn-up" data-dir="up">
+          <span>▲</span>
+          <span class="alt-lbl">Ascend</span>
+        </button>
+        <button class="alt-btn dn" id="btn-dn" data-dir="down">
+          <span>▼</span>
+          <span class="alt-lbl">Descend</span>
+        </button>
+      </div>
+
+      <!-- D-Pad -->
+      <div>
+        <p class="ctrl-section-label mob-only">Directional</p>
+        <div class="dpad">
+          <div class="dp-btn dp-spc"></div>
+          <button class="dp-btn" id="btn-fwd" data-dir="forward" title="Forward">▲</button>
+          <div class="dp-btn dp-spc"></div>
+
+          <button class="dp-btn" id="btn-left" data-dir="left" title="Left">◀</button>
+          <button class="dp-btn dp-ctr" id="btn-hold-center" title="Hold position">■</button>
+          <button class="dp-btn" id="btn-right" data-dir="right" title="Right">▶</button>
+
+          <div class="dp-btn dp-spc"></div>
+          <button class="dp-btn" id="btn-bwd" data-dir="backward" title="Backward">▼</button>
+          <div class="dp-btn dp-spc"></div>
+        </div>
+      </div>
+
+      <!-- Yaw -->
+      <div class="yaw-col" id="yaw-zone">
+        <p class="ctrl-section-label mob-only" style="width:100%;text-align:center">Rotation</p>
+        <p class="ctrl-section-label desk-only">Yaw</p>
+        <div class="yaw-pair">
+          <button class="yaw-btn" id="btn-yaw-l" title="Yaw Left">
+            <span>↺</span>
+            <span class="yaw-lbl">Left</span>
+          </button>
+          <button class="yaw-btn" id="btn-yaw-r" title="Yaw Right">
+            <span>↻</span>
+            <span class="yaw-lbl">Right</span>
+          </button>
+        </div>
+        <div class="flex items-c gap-2 mt-2">
+          <label style="font-size:.6rem;font-weight:700;color:var(--text3);white-space:nowrap">YAW °</label>
+          <input id="yaw-deg" class="input yaw-deg-input" type="number" value="45" min="5" max="360" step="5">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Parameters Row -->
+  <div class="param-row mb-3">
+    <label>Distance</label>
+    <input id="move-dist" class="input param-input" type="number" value="1" min="0.1" max="20" step="0.5">
+    <label>m</label>
+    <label style="margin-left:.5rem">Speed</label>
+    <input id="move-spd" class="input param-input" type="number" value="1" min="0.1" max="3" step="0.1">
+    <label>m/s</label>
+    <button class="btn btn-g btn-sm" onclick="saveSpeed()">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+      Save Speed
+    </button>
+    <div style="flex:1"></div>
+    <span style="font-size:.7rem;color:var(--text3)" class="desk-only">Hold button for continuous movement</span>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="action-bar mb-3">
+    <span style="font-size:.6875rem;font-weight:700;color:var(--text3);margin-right:.25rem;flex-shrink:0">QUICK</span>
+    <button class="btn btn-f" onclick="Drone.api('/hold')">Hold</button>
+    <button class="btn btn-f" onclick="Drone.api('/rtl')">RTL</button>
+    <button class="btn btn-w" onclick="Drone.api('/land')">Land</button>
+    <div style="flex:1"></div>
+    <button class="btn btn-em" onclick="Drone.api('/emergency')">⚠ Emergency Stop</button>
+  </div>
+
+  <!-- Console -->
+  <div class="card">
+    <div class="card-title flex justify-b items-c" style="margin-bottom:.5rem">
+      <span class="flex items-c gap-2"><span class="accent g"></span>Command Log</span>
+      <button class="btn btn-g btn-sm" onclick="document.getElementById('console-log').innerHTML=''">Clear</button>
+    </div>
+    <div id="console-log" class="con-box" style="height:140px">
+      <div class="log-row"><span class="log-time">--:--:--</span><span class="log-msg" style="color:var(--text3)">Gamepad ready — hold directional buttons for continuous movement</span></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Bottom Tab Nav ─────────────────────────────────── -->
+<nav class="nav-bottom">
+  <div class="tab-links">
+    <a href="index.html" class="tab-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="control.html" class="tab-link active">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Control
+    </a>
+    <a href="settings.html" class="tab-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Settings
+    </a>
+  </div>
+</nav>
+
+<script src="static/js/core.js"></script>
+<script>
+/* ── Restore saved speed ──────────────────────────────── */
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('moveSpd');
+  if (saved) document.getElementById('move-spd').value = saved;
+});
+
+function saveSpeed() {
+  const v = document.getElementById('move-spd').value;
+  localStorage.setItem('moveSpd', v);
+  Drone.log('Speed saved: ' + v + ' m/s', 'success');
+}
+
+/* ── Movement helpers ────────────────────────────────── */
+function getDist() { return parseFloat(document.getElementById('move-dist').value) || 1; }
+function getSpd()  { return parseFloat(document.getElementById('move-spd').value)  || 1; }
+function getYawDeg(){ return parseFloat(document.getElementById('yaw-deg').value)   || 45; }
+function getRepeatMs() { return Math.max(350, (getDist() / getSpd()) * 1000 + 200); }
+
+function sendMove(dir) { Drone.api('/move', { direction: dir, distance: getDist(), speed: getSpd() }); }
+function sendYaw(dir)  { Drone.api('/yaw', { direction: dir, degrees: getYawDeg(), speed: 30 }); }
+
+/* ── Hold-to-move binding ────────────────────────────── */
+function bindHold(el, onPress, onRelease) {
+  let startTimer = null;
+  let repeatInterval = null;
+  let active = false;
+
+  function start(e) {
+    if (e.button !== undefined && e.button !== 0) return; // left click only
+    e.preventDefault();
+    if (active) return;
+    active = true;
+    el.classList.add('pressed');
+
+    onPress();
+
+    startTimer = setTimeout(() => {
+      repeatInterval = setInterval(onPress, getRepeatMs());
+    }, 450);
+  }
+
+  function end() {
+    if (!active) return;
+    active = false;
+    el.classList.remove('pressed');
+    clearTimeout(startTimer);
+    clearInterval(repeatInterval);
+    startTimer = repeatInterval = null;
+    if (onRelease) onRelease();
+  }
+
+  el.addEventListener('pointerdown', start);
+  el.addEventListener('pointerup',     end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('pointerleave',  end);
+  el.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+/* ── Wire up directional buttons ─────────────────────── */
+const dirs = ['fwd', 'bwd', 'left', 'right'];
+const dirMap = { fwd: 'forward', bwd: 'backward', left: 'left', right: 'right' };
+
+dirs.forEach(id => {
+  const el = document.getElementById('btn-' + id);
+  if (!el) return;
+  const dir = dirMap[id];
+  bindHold(el, () => sendMove(dir), () => Drone.api('/hold'));
+});
+
+/* Altitude */
+bindHold(document.getElementById('btn-up'), () => sendMove('up'),   () => Drone.api('/hold'));
+bindHold(document.getElementById('btn-dn'), () => sendMove('down'), () => Drone.api('/hold'));
+
+/* Yaw — no auto-release hold (yaw is momentary) */
+bindHold(document.getElementById('btn-yaw-l'), () => sendYaw('left'));
+bindHold(document.getElementById('btn-yaw-r'), () => sendYaw('right'));
+
+/* Center hold button */
+document.getElementById('btn-hold-center').addEventListener('click', () => Drone.api('/hold'));
+
+/* Haptic feedback on mobile press */
+function vibrate() { if (navigator.vibrate) navigator.vibrate(12); }
+document.querySelectorAll('.dp-btn:not(.dp-spc), .alt-btn, .yaw-btn').forEach(el => {
+  el.addEventListener('pointerdown', vibrate);
+});
+
+/* Keyboard support (desktop) */
+const keyMap = {
+  ArrowUp:    'btn-fwd',   w: 'btn-fwd',
+  ArrowDown:  'btn-bwd',   s: 'btn-bwd',
+  ArrowLeft:  'btn-left',  a: 'btn-left',
+  ArrowRight: 'btn-right', d: 'btn-right',
+  q: 'btn-yaw-l', e: 'btn-yaw-r',
+  r: 'btn-up',    f: 'btn-dn',
+};
+const held = new Set();
+
+document.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT') return;
+  const id = keyMap[ev.key];
+  if (!id || held.has(ev.key)) return;
+  held.add(ev.key);
+  document.getElementById(id)?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+});
+document.addEventListener('keyup', ev => {
+  const id = keyMap[ev.key];
+  if (!id) return;
+  held.delete(ev.key);
+  document.getElementById(id)?.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+});
+</script>
+</body>
+</html>

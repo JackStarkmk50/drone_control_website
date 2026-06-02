@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Settings — Drone Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <style>
+    .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .param-result {
+      background: var(--s0); border: 1px solid var(--bdr); border-radius: var(--rsm);
+      padding: .625rem .875rem; font-family: 'JetBrains Mono', monospace;
+      font-size: .8125rem; color: var(--green); min-height: 38px;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .param-result .param-name { color: var(--text3); }
+    .video-wrap {
+      background: var(--s0); border: 1px solid var(--bdr); border-radius: var(--rsm);
+      overflow: hidden; aspect-ratio: 4/3;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .video-wrap img { width: 100%; height: 100%; object-fit: cover; display: none; }
+    .video-placeholder {
+      display: flex; flex-direction: column; align-items: center;
+      gap: .5rem; color: var(--text3); font-size: .8125rem;
+    }
+    .video-placeholder svg { width: 36px; height: 36px; }
+    .queue-list {
+      background: var(--s0); border: 1px solid var(--bdr); border-radius: var(--rsm);
+      max-height: 140px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: .75rem;
+    }
+    .queue-item {
+      padding: .5rem .875rem; border-bottom: 1px solid var(--bdr);
+      display: flex; gap: .75rem; align-items: center; color: var(--text2);
+    }
+    .queue-item:last-child { border-bottom: none; }
+    .queue-action { color: var(--blue); font-weight: 700; }
+    .health-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+    .health-item { background: var(--s0); border: 1px solid var(--bdr); border-radius: var(--rsm); padding: .625rem; text-align: center; }
+    .health-label { font-size: .5625rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: .25rem; }
+    .health-val { font-size: .9375rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text2); }
+    @media(max-width:768px){ .settings-grid{ grid-template-columns:1fr } }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Nav ───────────────────────────────────────── -->
+<nav class="nav-top">
+  <a href="index.html" class="nav-brand">
+    <span class="nav-icon">🚁</span>
+    <span>Drone Ctrl</span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="control.html" class="nav-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Controller
+    </a>
+    <a href="settings.html" class="nav-link active">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Settings
+    </a>
+  </div>
+  <div class="nav-right">
+    <div id="conn-badge">
+      <span id="conn-dot"></span>
+      <span id="conn-label">DISCONNECTED</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ── URL Config Banner ──────────────────────────────── -->
+<div id="url-banner" class="url-banner">
+  <span class="url-banner-label">Server URL</span>
+  <div class="flex grow gap-2" style="min-width:200px">
+    <input id="drone-url" class="input grow" type="url" placeholder="https://your-drone.ngrok-free.app" autocomplete="off" spellcheck="false">
+    <button id="url-save" class="btn btn-p">Connect</button>
+  </div>
+</div>
+
+<!-- ── Main ──────────────────────────────────────────── -->
+<main class="page">
+
+  <!-- Status Pills -->
+  <div class="status-bar">
+    <div class="stat-pill"><span class="pill-label">Mode</span><span id="pill-mode" class="pill-val blue">--</span></div>
+    <div class="stat-pill"><span class="pill-label">Armed</span><span id="pill-armed" class="pill-val">--</span></div>
+    <div class="stat-pill"><span class="pill-label">Alt</span><span id="pill-alt" class="pill-val">--</span></div>
+    <div class="stat-pill"><span class="pill-label">Battery</span><span id="pill-bat" class="pill-val">--</span></div>
+    <div class="stat-pill"><span class="pill-label">GPS</span><span id="pill-gps" class="pill-val">--</span></div>
+  </div>
+
+  <div class="settings-grid mb-4">
+
+    <!-- Safety Switch -->
+    <div class="card">
+      <div class="card-title"><span class="accent r"></span>Safety Switch</div>
+      <p style="font-size:.8rem;color:var(--text2);margin-bottom:.875rem">Hardware safety interlock. Disable before arming when required by your flight controller.</p>
+      <div class="flex gap-3">
+        <button class="btn btn-s btn-lg grow" onclick="Drone.api('/safety',{state:'on'})">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+          Safe On
+        </button>
+        <button class="btn btn-d btn-lg grow" onclick="Drone.api('/safety',{state:'off'})">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285zm0 13.036h.008v.008H12v-.008z"/></svg>
+          Disable
+        </button>
+      </div>
+    </div>
+
+    <!-- Calibration -->
+    <div class="card">
+      <div class="card-title"><span class="accent a"></span>Calibration</div>
+      <p style="font-size:.8rem;color:var(--text2);margin-bottom:.875rem">Level calibration tells the FC what angles correspond to a level surface. Place drone flat first.</p>
+      <button class="btn btn-w btn-xl" onclick="Drone.api('/lvlcal')">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 9.75V10.5"/></svg>
+        Level Calibration
+      </button>
+    </div>
+
+    <!-- MAVLink Parameters -->
+    <div class="card">
+      <div class="card-title"><span class="accent"></span>MAVLink Parameters</div>
+      <div class="flex gap-2 mb-2">
+        <input id="pname" class="input" placeholder="PARAM_NAME" autocomplete="off" spellcheck="false" style="flex:2">
+        <input id="pval"  class="input" placeholder="Value" type="number" style="flex:1">
+      </div>
+      <div class="flex gap-2 mb-2">
+        <button class="btn btn-g grow" onclick="getParam()">GET</button>
+        <button class="btn btn-p grow" onclick="setParam()">SET</button>
+      </div>
+      <div class="param-result" id="param-result">
+        <span style="color:var(--text3)">—</span>
+      </div>
+    </div>
+
+    <!-- Server Health -->
+    <div class="card">
+      <div class="card-title flex justify-b items-c" style="margin-bottom:.875rem">
+        <span class="flex items-c gap-2"><span class="accent g"></span>Server Health</span>
+        <button class="btn btn-g btn-sm" onclick="refreshHealth()">Refresh</button>
+      </div>
+      <div class="health-grid" id="health-grid">
+        <div class="health-item"><div class="health-label">Connected</div><div class="health-val" id="h-conn">--</div></div>
+        <div class="health-item"><div class="health-label">Armed</div><div class="health-val" id="h-arm">--</div></div>
+        <div class="health-item"><div class="health-label">Mode</div><div class="health-val" id="h-mode">--</div></div>
+        <div class="health-item"><div class="health-label">Battery</div><div class="health-val" id="h-bat">--</div></div>
+        <div class="health-item"><div class="health-label">GPS Fix</div><div class="health-val" id="h-gps">--</div></div>
+        <div class="health-item"><div class="health-label">Status</div><div class="health-val" id="h-status" style="font-size:.75rem">--</div></div>
+      </div>
+    </div>
+
+    <!-- Camera -->
+    <div class="card">
+      <div class="card-title"><span class="accent"></span>Camera Feed</div>
+      <div class="flex gap-2 mb-3">
+        <button class="btn btn-s grow" onclick="startCam()">Start Camera</button>
+        <button class="btn btn-d grow" onclick="stopCam()">Stop Camera</button>
+      </div>
+      <div class="video-wrap" id="video-wrap">
+        <img id="cam-img" alt="Camera Feed">
+        <div class="video-placeholder" id="cam-placeholder">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/></svg>
+          <span>Camera inactive</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Command Queue -->
+    <div class="card">
+      <div class="card-title flex justify-b items-c" style="margin-bottom:.875rem">
+        <span class="flex items-c gap-2"><span class="accent a"></span>Command Queue</span>
+        <div class="flex gap-2">
+          <button class="btn btn-g btn-sm" onclick="refreshQueue()">Refresh</button>
+          <button class="btn btn-d btn-sm" onclick="clearQueue()">Clear</button>
+        </div>
+      </div>
+
+      <div class="flex gap-2 mb-2">
+        <input id="q-action" class="input" placeholder="action (e.g. move)" style="flex:1">
+        <input id="q-params" class="input" placeholder='{"direction":"forward"}' style="flex:2">
+        <button class="btn btn-p btn-sm" onclick="addToQueue()">Add</button>
+      </div>
+
+      <div style="font-size:.75rem;color:var(--text3);margin-bottom:.5rem">
+        Queue depth: <span id="q-depth" style="color:var(--blue);font-weight:700">0</span>
+      </div>
+
+      <div class="queue-list" id="queue-list">
+        <div class="queue-item" style="color:var(--text3);justify-content:center">Queue empty</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Console -->
+  <div class="card">
+    <div class="card-title flex justify-b items-c" style="margin-bottom:.5rem">
+      <span class="flex items-c gap-2"><span class="accent g"></span>Console Output</span>
+      <button class="btn btn-g btn-sm" onclick="document.getElementById('console-log').innerHTML=''">Clear</button>
+    </div>
+    <div id="console-log" class="con-box" style="height:160px">
+      <div class="log-row"><span class="log-time">--:--:--</span><span class="log-msg" style="color:var(--text3)">Settings panel ready</span></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Bottom Tab Nav ─────────────────────────────────── -->
+<nav class="nav-bottom">
+  <div class="tab-links">
+    <a href="index.html" class="tab-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="control.html" class="tab-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Control
+    </a>
+    <a href="settings.html" class="tab-link active">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Settings
+    </a>
+  </div>
+</nav>
+
+<script src="static/js/core.js"></script>
+<script>
+/* ── Parameters ──────────────────────────────────────── */
+async function getParam() {
+  const name = document.getElementById('pname').value.trim().toUpperCase();
+  if (!name) return Drone.log('Enter a parameter name', 'warn');
+  const data = await Drone.api('/param?name=' + encodeURIComponent(name));
+  if (data && data.value !== undefined) {
+    document.getElementById('pval').value = data.value;
+    const res = document.getElementById('param-result');
+    res.innerHTML = `<span class="param-name">${name}</span><span>=</span><span>${data.value}</span>`;
+  }
+}
+
+async function setParam() {
+  const name = document.getElementById('pname').value.trim().toUpperCase();
+  const val  = document.getElementById('pval').value.trim();
+  if (!name || val === '') return Drone.log('Name and value required', 'warn');
+  await Drone.api('/param', { param: name, value: parseFloat(val) });
+}
+
+/* ── Health ──────────────────────────────────────────── */
+async function refreshHealth() {
+  const data = await Drone.api('/health');
+  if (!data) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('h-conn',   data.connected ? 'YES' : 'NO');
+  set('h-arm',    data.armed     ? 'ARMED' : 'SAFE');
+  set('h-mode',   data.mode    ?? '--');
+  set('h-bat',    data.battery  != null ? data.battery + 'V' : '--');
+  set('h-gps',    data.gps_fix  != null ? data.gps_fix       : '--');
+  set('h-status', data.system_status ?? '--');
+}
+
+/* ── Camera ──────────────────────────────────────────── */
+let camActive = false;
+
+async function startCam() {
+  await Drone.api('/camera/start');
+  const url = Drone.getSavedUrl();
+  if (!url) return;
+  const img = document.getElementById('cam-img');
+  const ph  = document.getElementById('cam-placeholder');
+  img.src = url + '/video_feed?t=' + Date.now();
+  img.style.display = 'block';
+  ph.style.display  = 'none';
+  camActive = true;
+  img.onerror = () => { Drone.log('Camera feed failed to load', 'error'); stopCam(); };
+}
+
+function stopCam() {
+  Drone.api('/camera/stop');
+  const img = document.getElementById('cam-img');
+  const ph  = document.getElementById('cam-placeholder');
+  img.src = '';
+  img.style.display = 'none';
+  ph.style.display  = 'flex';
+  camActive = false;
+}
+
+/* ── Queue ───────────────────────────────────────────── */
+async function refreshQueue() {
+  const data = await Drone.api('/queue/status');
+  if (!data) return;
+  document.getElementById('q-depth').textContent = data.queued || 0;
+  const list = document.getElementById('queue-list');
+  if (!data.items || data.items.length === 0) {
+    list.innerHTML = '<div class="queue-item" style="color:var(--text3);justify-content:center">Queue empty</div>';
+    return;
+  }
+  list.innerHTML = data.items.map((item, i) =>
+    `<div class="queue-item">
+      <span style="color:var(--text3);font-size:.6875rem">#${i+1}</span>
+      <span class="queue-action">${item.action || '?'}</span>
+      <span style="color:var(--text3)">${JSON.stringify(item.params || {})}</span>
+    </div>`
+  ).join('');
+}
+
+async function clearQueue() {
+  await Drone.api('/queue/clear');
+  refreshQueue();
+}
+
+async function addToQueue() {
+  const action = document.getElementById('q-action').value.trim();
+  const rawp   = document.getElementById('q-params').value.trim();
+  if (!action) return Drone.log('Action name required', 'warn');
+  let params = {};
+  if (rawp) {
+    try { params = JSON.parse(rawp); }
+    catch { return Drone.log('Invalid JSON in params field', 'error'); }
+  }
+  const data = await Drone.api('/queue/add', { action, params });
+  if (data && data.success) {
+    document.getElementById('q-action').value = '';
+    document.getElementById('q-params').value = '';
+    refreshQueue();
+  }
+}
+
+/* ── Auto refresh health on load ─────────────────────── */
+document.addEventListener('drone:tel', () => {}, { once: true });
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(refreshHealth, 1500);
+  setTimeout(refreshQueue,  1500);
+});
+</script>
+</body>
+</html>
