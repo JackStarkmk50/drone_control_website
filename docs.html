@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Docs — Drone Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/main.css">
+</head>
+<body>
+
+<!-- ── Top Nav ───────────────────────────────────────── -->
+<nav class="nav-top">
+  <a href="index.html" class="nav-brand">
+    <span class="nav-icon">🚁</span>
+    <span>Drone Ctrl</span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="control.html" class="nav-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Controller
+    </a>
+    <a href="settings.html" class="nav-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Settings
+    </a>
+    <a href="docs.html" class="nav-link active">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      Docs
+    </a>
+  </div>
+</nav>
+
+<!-- ── Docs Layout ────────────────────────────────────── -->
+<div class="docs-wrap">
+
+  <!-- Sidebar -->
+  <aside class="docs-sidebar">
+    <div class="docs-sidenav-group">
+      <div class="docs-sidenav-title">Introduction</div>
+      <a href="#overview" class="docs-nav-link active" onclick="setActive(this)">Overview</a>
+      <a href="#architecture" class="docs-nav-link" onclick="setActive(this)">Architecture</a>
+      <a href="#quickstart" class="docs-nav-link" onclick="setActive(this)">Quick Start</a>
+    </div>
+    <div class="docs-sidenav-group">
+      <div class="docs-sidenav-title">Server Implementation</div>
+      <a href="#server-setup" class="docs-nav-link" onclick="setActive(this)">Server Setup</a>
+      <a href="#websocket" class="docs-nav-link" onclick="setActive(this)">WebSocket & Telemetry</a>
+      <a href="#telemetry-schema" class="docs-nav-link sub" onclick="setActive(this)">Telemetry Schema</a>
+    </div>
+    <div class="docs-sidenav-group">
+      <div class="docs-sidenav-title">API Reference</div>
+      <a href="#api-flight" class="docs-nav-link" onclick="setActive(this)">Flight Commands</a>
+      <a href="#api-movement" class="docs-nav-link" onclick="setActive(this)">Movement</a>
+      <a href="#api-system" class="docs-nav-link" onclick="setActive(this)">System & Config</a>
+      <a href="#api-camera" class="docs-nav-link" onclick="setActive(this)">Camera & Queue</a>
+    </div>
+    <div class="docs-sidenav-group">
+      <div class="docs-sidenav-title">Hardware & Deployment</div>
+      <a href="#hardware" class="docs-nav-link" onclick="setActive(this)">Hardware Setup</a>
+      <a href="#remote-access" class="docs-nav-link" onclick="setActive(this)">Remote Access</a>
+      <a href="#serving" class="docs-nav-link" onclick="setActive(this)">Serving the Web App</a>
+    </div>
+  </aside>
+
+  <!-- Content -->
+  <main class="docs-content">
+
+    <!-- Overview -->
+    <section class="docs-section" id="overview">
+      <div class="docs-badge">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:12px;height:12px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Documentation
+      </div>
+      <h1 class="docs-h1">Drone Control Web UI</h1>
+      <p class="docs-lead">
+        A standalone multi-page web app that connects to a MAVLink drone over WebSocket.
+        Open the HTML files directly in any browser — no build step, no framework, no server needed
+        to host the frontend.
+      </p>
+      <div class="docs-note">
+        <span class="docs-icon">ℹ️</span>
+        <span>This site is purely a frontend. It talks to a Python Flask+SocketIO server running on
+        your Raspberry Pi via HTTP/WebSocket. You must implement and run that server for anything to work.</span>
+      </div>
+      <h2 class="docs-h2">What each page does</h2>
+      <ul class="docs-ul">
+        <li><strong>Dashboard (index.html)</strong> — live telemetry grid (19 fields), ARM/DISARM/TAKEOFF/LAND/RTL/HOLD, emergency stop, flight mode selector, console log.</li>
+        <li><strong>Controller (control.html)</strong> — gamepad-style directional controls (D-pad), altitude up/down, yaw rotate, hold-to-repeat movement, keyboard support (WASD/arrows/Q/E/R/F), haptic feedback on mobile.</li>
+        <li><strong>Settings (settings.html)</strong> — safety switch, level calibration, MAVLink parameter read/write, server health check, live camera feed, command queue management.</li>
+        <li><strong>Docs (docs.html)</strong> — this page.</li>
+      </ul>
+    </section>
+
+    <!-- Architecture -->
+    <section class="docs-section" id="architecture">
+      <h2 class="docs-h2">Architecture</h2>
+      <p class="docs-p">Two independent pieces that connect over your local network or via ngrok tunnel:</p>
+      <div class="arch-box">
+┌─────────────────────────────────┐     ┌──────────────────────────────────────┐
+│  Browser (Phone / PC)           │     │  Raspberry Pi 2                      │
+│                                 │     │                                      │
+│  index.html / control.html  ◄───┼─────┼─►  Flask + Flask-SocketIO            │
+│  settings.html / docs.html      │     │     └─ eventlet async worker         │
+│                                 │     │                                      │
+│  static/js/core.js              │     │  new_api_server.py                   │
+│    ├─ socket.io client          │ WS  │    ├─ emits 'telemetry' at 5 Hz      │
+│    │    telemetry events ◄───────┼─────┼────┘                                │
+│    └─ fetch() REST calls ───────┼─────┼──► POST /arm, /takeoff, /move …      │
+│                                 │     │                                      │
+│  localStorage: droneUrl         │     │  DroneKit                            │
+└─────────────────────────────────┘     │    └─ /dev/ttyAMA0 @ 57600 baud     │
+                                        │         MAVLink ──► Pixhawk FC       │
+                                        └──────────────────────────────────────┘
+      </div>
+      <p class="docs-p">
+        The browser stores the server URL once in <code>localStorage</code> and reuses it across all pages.
+        All communication uses plain HTTP (or HTTPS via ngrok). The WebSocket connection streams telemetry;
+        REST calls send commands.
+      </p>
+    </section>
+
+    <!-- Quick Start -->
+    <section class="docs-section" id="quickstart">
+      <h2 class="docs-h2">Quick Start</h2>
+      <div class="install-steps">
+        <div class="install-step">
+          <div class="install-num">1</div>
+          <div class="install-text">
+            <strong>Install Python dependencies on the Pi</strong><br>
+            <code>pip install flask flask-socketio eventlet dronekit pymavlink</code>
+          </div>
+        </div>
+        <div class="install-step">
+          <div class="install-num">2</div>
+          <div class="install-text">
+            <strong>Run the server on the Pi</strong><br>
+            <code>python new_api_server.py</code> — starts on port 5000 by default.
+          </div>
+        </div>
+        <div class="install-step">
+          <div class="install-num">3</div>
+          <div class="install-text">
+            <strong>Open the web app</strong><br>
+            Desktop: open <code>index.html</code> directly in Chrome/Firefox.<br>
+            Mobile: serve from the Pi — <code>cd webapp &amp;&amp; python -m http.server 8080</code>
+            then visit <code>http://&lt;pi-ip&gt;:8080</code>.
+          </div>
+        </div>
+        <div class="install-step">
+          <div class="install-num">4</div>
+          <div class="install-text">
+            <strong>Connect</strong><br>
+            Enter the server URL in the banner at the top — e.g. <code>http://192.168.1.42:5000</code>
+            or your ngrok URL. The URL saves to localStorage and is reused on every page.
+          </div>
+        </div>
+        <div class="install-step">
+          <div class="install-num">5</div>
+          <div class="install-text">
+            <strong>Remote access (optional)</strong><br>
+            <code>ngrok http 5000</code> on the Pi gives you an HTTPS URL accessible from anywhere.
+            Paste that into the URL banner. Kill ngrok when done — the URL dies with it.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Server Setup -->
+    <section class="docs-section" id="server-setup">
+      <h2 class="docs-h2">Server Setup — Minimal Template</h2>
+      <p class="docs-p">
+        Below is the minimum Flask-SocketIO server skeleton that this web app expects.
+        Expand it with your DroneKit logic.
+      </p>
+      <span class="code-label">new_api_server.py — skeleton</span>
+      <pre class="code-block">import eventlet
+eventlet.monkey_patch()
+
+from flask import Flask, request, jsonify
+from flask_socketio import SocketIO
+import dronekit, threading, time
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'drone-secret'
+
+socketio = SocketIO(
+    app,
+    cors_allowed_origins='*',   # allow any origin (browser opens file://)
+    async_mode='eventlet',
+    ping_timeout=20,
+    ping_interval=10,
+)
+
+# ── Connect to vehicle ──────────────────────────────────
+vehicle = dronekit.connect(
+    '/dev/ttyAMA0',
+    baud=57600,
+    wait_ready=True,
+    heartbeat_timeout=30,
+)
+
+# ── Telemetry broadcast (5 Hz) ─────────────────────────
+def tel_loop():
+    while True:
+        socketio.emit('telemetry', get_status_data())
+        time.sleep(0.2)
+
+threading.Thread(target=tel_loop, daemon=True).start()
+
+# ── Helper: build telemetry dict ───────────────────────
+def get_status_data():
+    try:
+        vibe = vehicle.vibration
+        vx = round(vibe.vibration_x, 3) if vibe else None
+        vy = round(vibe.vibration_y, 3) if vibe else None
+        vz = round(vibe.vibration_z, 3) if vibe else None
+    except Exception:
+        vx = vy = vz = None
+
+    loc = vehicle.location.global_relative_frame
+    att = vehicle.attitude
+    bat = vehicle.battery
+    return {
+        'mode':          str(vehicle.mode.name),
+        'armed':         vehicle.armed,
+        'altitude':      round(loc.alt, 3) if loc.alt else 0,
+        'lat':           round(loc.lat, 6) if loc.lat else None,
+        'lon':           round(loc.lon, 6) if loc.lon else None,
+        'groundspeed':   round(vehicle.groundspeed, 2),
+        'airspeed':      round(vehicle.airspeed, 2),
+        'pitch':         round(att.pitch, 4) if att else None,
+        'roll':          round(att.roll, 4) if att else None,
+        'yaw':           round(att.yaw, 4) if att else None,
+        'battery':       round(bat.voltage, 2) if bat and bat.voltage else None,
+        'battery_level': bat.level if bat else None,
+        'satellites':    vehicle.gps_0.satellites_visible,
+        'gps_fix':       vehicle.gps_0.fix_type,
+        'ekf_ok':        vehicle.ekf_ok,
+        'is_armable':    vehicle.is_armable,
+        'vibe_x': vx, 'vibe_y': vy, 'vibe_z': vz,
+    }
+
+# ── CORS headers ───────────────────────────────────────
+@app.after_request
+def add_cors(r):
+    r.headers['Access-Control-Allow-Origin']  = '*'
+    r.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    r.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
+    return r
+
+@app.route('/', defaults={'path':''}, methods=['OPTIONS'])
+@app.route('/&lt;path:path&gt;', methods=['OPTIONS'])
+def options(_):
+    return '', 204
+
+# ── Run ────────────────────────────────────────────────
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False)</pre>
+
+      <div class="docs-warn">
+        <span class="docs-icon">⚠️</span>
+        <span><strong>CORS must be open.</strong> The browser opens <code>index.html</code> from
+        <code>file://</code> or a different port, so the server has no shared origin with the Pi.
+        Without <code>cors_allowed_origins='*'</code> in SocketIO and the after_request CORS headers,
+        every request will be blocked.</span>
+      </div>
+    </section>
+
+    <!-- WebSocket -->
+    <section class="docs-section" id="websocket">
+      <h2 class="docs-h2">WebSocket &amp; Telemetry</h2>
+      <p class="docs-p">
+        The site connects with Socket.IO 4.x using WebSocket transport only (no long-polling fallback).
+        Connection options used by <code>core.js</code>:
+      </p>
+      <pre class="code-block">io(url, {
+  transports: ['websocket'],   // no polling — avoids CORS preflight issues
+  upgrade: false,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 2000,
+  timeout: 10000,
+})</pre>
+      <p class="docs-p">
+        The server must emit the event named exactly <code>'telemetry'</code> — this is what
+        <code>socket.on('telemetry', ...)</code> in core.js listens for.
+        Emit it inside your background thread at whatever rate you want; 5 Hz (every 200 ms) works well.
+      </p>
+    </section>
+
+    <!-- Telemetry Schema -->
+    <section class="docs-section" id="telemetry-schema">
+      <h2 class="docs-h2">Telemetry Schema</h2>
+      <p class="docs-p">
+        Every field is optional — the UI handles <code>null</code> gracefully (shows <code>--</code>).
+        Missing fields are simply ignored. Add extra fields freely; the UI ignores unknown keys.
+      </p>
+      <div class="tel-ref-grid">
+        <div class="tel-ref-item"><div class="tel-ref-key">mode</div><div class="tel-ref-type">string</div><div class="tel-ref-desc">Flight mode name, e.g. "GUIDED"</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">armed</div><div class="tel-ref-type">bool</div><div class="tel-ref-desc">True when motors armed</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">altitude</div><div class="tel-ref-type">float (m)</div><div class="tel-ref-desc">Relative altitude above home</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">lat / lon</div><div class="tel-ref-type">float (°)</div><div class="tel-ref-desc">GPS position, 6 decimal places</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">groundspeed</div><div class="tel-ref-type">float (m/s)</div><div class="tel-ref-desc">Speed over ground</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">airspeed</div><div class="tel-ref-type">float (m/s)</div><div class="tel-ref-desc">Airspeed from pitot (if fitted)</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">pitch / roll / yaw</div><div class="tel-ref-type">float (rad)</div><div class="tel-ref-desc">Attitude angles in radians — UI converts to degrees</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">battery</div><div class="tel-ref-type">float (V)</div><div class="tel-ref-desc">Pack voltage. Red &lt;10.5V, amber &lt;11.2V</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">battery_level</div><div class="tel-ref-type">int (%)</div><div class="tel-ref-desc">State of charge 0–100</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">satellites</div><div class="tel-ref-type">int</div><div class="tel-ref-desc">GPS satellites visible</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">gps_fix</div><div class="tel-ref-type">int (0–6)</div><div class="tel-ref-desc">Fix type. 3 = 3D fix (GPS OK)</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">ekf_ok</div><div class="tel-ref-type">bool</div><div class="tel-ref-desc">EKF health flag from DroneKit</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">is_armable</div><div class="tel-ref-type">bool</div><div class="tel-ref-desc">True when pre-arm checks pass</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">vibe_x / y / z</div><div class="tel-ref-type">float (m/s²)</div><div class="tel-ref-desc">IMU vibration per axis</div></div>
+      </div>
+    </section>
+
+    <!-- API: Flight -->
+    <section class="docs-section" id="api-flight">
+      <h2 class="docs-h2">API Reference — Flight Commands</h2>
+      <p class="docs-p">
+        All commands return JSON. On success: <code>{"success": true, "message": "..."}</code>.
+        On failure: <code>{"success": false, "error": "reason"}</code>.
+        The UI logs both outcomes in the console card.
+      </p>
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>Endpoint</th><th>Body</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/arm</td><td>—</td><td>Arm motors. Vehicle must be armable (EKF OK, GPS fix, pre-arm clear).</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/disarm</td><td>—</td><td>Disarm motors. Safe to call at any time.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/takeoff</td><td><span class="body-tag">altitude: float</span></td><td>Takeoff to altitude in metres (relative to home). Drone must be armed in GUIDED mode.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/land</td><td>—</td><td>Set mode to LAND. Vehicle descends and disarms automatically.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/rtl</td><td>—</td><td>Return to launch. Climbs to RTL_ALT, flies home, lands.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/hold</td><td>—</td><td>Loiter in place (sets LOITER or POSHOLD mode).</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/emergency</td><td>—</td><td>Immediate motor cutoff. <strong>Use only on ground or if crash is unavoidable.</strong></td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/mode</td><td><span class="body-tag">mode: string</span></td><td>Set flight mode by name. Valid: STABILIZE, ALTHOLD, LOITER, GUIDED, GUIDED_NOGPS, LAND, RTL, AUTO, POSHOLD.</td></tr>
+        </tbody>
+      </table>
+
+      <span class="code-label">Example implementation — /arm</span>
+      <pre class="code-block">@app.route('/arm', methods=['POST'])
+def arm():
+    try:
+        vehicle.mode = dronekit.VehicleMode('GUIDED')
+        vehicle.armed = True
+        # Wait up to 5s for arming
+        for _ in range(50):
+            if vehicle.armed:
+                break
+            time.sleep(0.1)
+        if vehicle.armed:
+            return jsonify({'success': True, 'message': 'Armed'})
+        return jsonify({'success': False, 'error': 'Arming timeout'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})</pre>
+
+      <span class="code-label">Example implementation — /takeoff</span>
+      <pre class="code-block">@app.route('/takeoff', methods=['POST'])
+def takeoff():
+    data = request.get_json(force=True) or {}
+    alt  = float(data.get('altitude', 2))
+    try:
+        vehicle.simple_takeoff(alt)
+        return jsonify({'success': True, 'message': f'Taking off to {alt}m'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})</pre>
+    </section>
+
+    <!-- API: Movement -->
+    <section class="docs-section" id="api-movement">
+      <h2 class="docs-h2">API Reference — Movement</h2>
+      <p class="docs-p">
+        Movement commands are called repeatedly while the pilot holds a direction button
+        (hold-to-repeat at ~350 ms intervals). Each press sends a discrete move command.
+        Release sends <code>/hold</code>.
+      </p>
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>Endpoint</th><th>Body</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td class="ep">/move</td>
+            <td>
+              <span class="body-tag">direction: string</span><br>
+              <span class="body-tag">distance: float (m)</span><br>
+              <span class="body-tag">speed: float (m/s)</span>
+            </td>
+            <td>Move in <code>forward</code>, <code>backward</code>, <code>left</code>, or <code>right</code>. Uses <code>send_ned_velocity</code> or <code>simple_goto</code> offset in GUIDED mode.</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td class="ep">/yaw</td>
+            <td>
+              <span class="body-tag">direction: string</span><br>
+              <span class="body-tag">degrees: float</span><br>
+              <span class="body-tag">speed: int (°/s)</span>
+            </td>
+            <td>Rotate <code>left</code> or <code>right</code> by specified degrees. Uses <code>condition_yaw</code> MAVLink command.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <span class="code-label">Example implementation — /move (NED velocity)</span>
+      <pre class="code-block">from pymavlink import mavutil
+
+def send_ned_velocity(vx, vy, vz, duration=0):
+    msg = vehicle.message_factory.set_position_target_local_ned_encode(
+        0, 0, 0,
+        mavutil.mavlink.MAV_FRAME_BODY_NED,
+        0b0000111111000111,   # type_mask: enable velocity only
+        0, 0, 0,              # position (ignored)
+        vx, vy, vz,           # velocity in m/s
+        0, 0, 0,              # accel (ignored)
+        0, 0                  # yaw, yaw_rate (ignored)
+    )
+    vehicle.send_mavlink(msg)
+
+@app.route('/move', methods=['POST'])
+def move():
+    data = request.get_json(force=True) or {}
+    direction = data.get('direction', 'forward')
+    speed     = float(data.get('speed', 1))
+
+    mapping = {
+        'forward':  ( speed, 0,      0),
+        'backward': (-speed, 0,      0),
+        'right':    (0,       speed, 0),
+        'left':     (0,      -speed, 0),
+    }
+    vx, vy, vz = mapping.get(direction, (0, 0, 0))
+    send_ned_velocity(vx, vy, vz)
+    return jsonify({'success': True, 'message': f'Moving {direction}'})</pre>
+
+      <span class="code-label">Example implementation — /yaw (condition_yaw)</span>
+      <pre class="code-block">@app.route('/yaw', methods=['POST'])
+def yaw():
+    data      = request.get_json(force=True) or {}
+    degrees   = float(data.get('degrees', 10))
+    speed     = int(data.get('speed', 30))
+    clockwise = 1 if data.get('direction', 'right') == 'right' else -1
+
+    msg = vehicle.message_factory.command_long_encode(
+        0, 0,
+        mavutil.mavlink.MAV_CMD_CONDITION_YAW,
+        0,
+        degrees,   # heading change
+        speed,     # rotation speed deg/s
+        clockwise, # direction: 1=CW, -1=CCW
+        1,         # relative (1) vs absolute (0)
+        0, 0, 0
+    )
+    vehicle.send_mavlink(msg)
+    return jsonify({'success': True, 'message': f'Yawing {data.get("direction")} {degrees}°'})</pre>
+    </section>
+
+    <!-- API: System -->
+    <section class="docs-section" id="api-system">
+      <h2 class="docs-h2">API Reference — System &amp; Config</h2>
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>Endpoint</th><th>Body / Params</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><span class="method get">GET</span></td><td class="ep">/health</td><td>—</td><td>Returns server health info: connected, armed state, mode, battery, GPS fix, uptime. Used by Settings page health cards.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/safety</td><td><span class="body-tag">state: "on"/"off"</span></td><td>Enable (<code>on</code>) or disable (<code>off</code>) the ArduPilot hardware safety switch via MAVLink.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/lvlcal</td><td>—</td><td>Trigger accelerometer level calibration (MAV_CMD_PREFLIGHT_CALIBRATION).</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep">/param?name=X</td><td>Query param: <span class="body-tag">name</span></td><td>Read a MAVLink parameter by name, e.g. <code>/param?name=WPNAV_SPEED</code>.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/param</td><td><span class="body-tag">param: string</span> <span class="body-tag">value: any</span></td><td>Write a MAVLink parameter. Value is cast to the correct type automatically by DroneKit.</td></tr>
+        </tbody>
+      </table>
+
+      <span class="code-label">Example implementation — /param read &amp; write</span>
+      <pre class="code-block">@app.route('/param', methods=['GET', 'POST'])
+def param():
+    if request.method == 'GET':
+        name = request.args.get('name', '').upper()
+        val  = vehicle.parameters.get(name)
+        if val is None:
+            return jsonify({'success': False, 'error': f'Param {name} not found'})
+        return jsonify({'success': True, 'name': name, 'value': val})
+
+    data  = request.get_json(force=True) or {}
+    name  = data.get('param', '').upper()
+    value = data.get('value')
+    try:
+        vehicle.parameters[name] = value
+        return jsonify({'success': True, 'message': f'{name} set to {value}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})</pre>
+    </section>
+
+    <!-- API: Camera & Queue -->
+    <section class="docs-section" id="api-camera">
+      <h2 class="docs-h2">API Reference — Camera &amp; Command Queue</h2>
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>Endpoint</th><th>Body</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><span class="method get">GET</span></td><td class="ep">/video_feed</td><td>—</td><td>MJPEG stream from Pi camera. Set as <code>&lt;img src="..."&gt;</code> to display live feed. Requires PiCamera or OpenCV capture.</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep">/queue/status</td><td>—</td><td>Returns current command queue as JSON array. Each item has <code>command</code> and <code>params</code>.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/queue/clear</td><td>—</td><td>Flush the entire command queue.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/queue/add</td><td><span class="body-tag">command: string</span> <span class="body-tag">params: object</span></td><td>Push a command onto the queue. Queue worker executes them in order.</td></tr>
+        </tbody>
+      </table>
+
+      <span class="code-label">Minimal MJPEG video feed (Pi Camera + picamera2)</span>
+      <pre class="code-block">from picamera2 import Picamera2
+import cv2, io
+
+cam = Picamera2()
+cam.configure(cam.create_video_configuration(main={'size': (640, 480)}))
+cam.start()
+
+def gen_frames():
+    while True:
+        buf = io.BytesIO()
+        cam.capture_file(buf, format='jpeg')
+        frame = buf.getvalue()
+        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+@app.route('/video_feed')
+def video_feed():
+    from flask import Response
+    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')</pre>
+    </section>
+
+    <!-- Hardware -->
+    <section class="docs-section" id="hardware">
+      <h2 class="docs-h2">Hardware Setup</h2>
+      <p class="docs-p">Tested hardware configuration:</p>
+      <ul class="docs-ul">
+        <li><strong>Flight Controller:</strong> Pixhawk 1 / 2.4.8 (ArduCopter firmware)</li>
+        <li><strong>Companion Computer:</strong> Raspberry Pi 2 Model B (or newer Pi)</li>
+        <li><strong>Connection:</strong> Pixhawk TELEM2 port → Pi UART GPIO (pins 8/10), <code>/dev/ttyAMA0</code>, baud 57600</li>
+        <li><strong>Power:</strong> Pi powered from BEC/UBEC, not USB from Pixhawk</li>
+      </ul>
+      <h2 class="docs-h2" style="margin-top:1.5rem">Pi UART config</h2>
+      <p class="docs-p">Disable the serial console so the UART is free for MAVLink:</p>
+      <pre class="code-block"># /boot/config.txt
+enable_uart=1
+dtoverlay=disable-bt        # Pi 3/4 only — frees ttyAMA0 from Bluetooth
+
+# /boot/cmdline.txt — remove: console=serial0,115200
+# Then reboot</pre>
+      <p class="docs-p">Verify the vehicle connects before starting the server:</p>
+      <pre class="code-block">python3 -c "
+import dronekit
+v = dronekit.connect('/dev/ttyAMA0', baud=57600, wait_ready=True)
+print('Mode:', v.mode.name, '| Armed:', v.armed)
+v.close()
+"</pre>
+    </section>
+
+    <!-- Remote Access -->
+    <section class="docs-section" id="remote-access">
+      <h2 class="docs-h2">Remote Access — ngrok</h2>
+      <p class="docs-p">
+        If you host the web app on GitHub Pages or Netlify (HTTPS), the browser will block HTTP
+        calls to the Pi. ngrok tunnels the Pi's HTTP server over HTTPS, solving this.
+      </p>
+      <div class="install-steps">
+        <div class="install-step">
+          <div class="install-num">1</div>
+          <div class="install-text">
+            Install ngrok on the Pi: <code>curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc &amp;&amp; echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list &amp;&amp; sudo apt update &amp;&amp; sudo apt install ngrok</code>
+          </div>
+        </div>
+        <div class="install-step">
+          <div class="install-num">2</div>
+          <div class="install-text">
+            Authenticate: <code>ngrok config add-authtoken &lt;your-token&gt;</code> (free account at ngrok.com)
+          </div>
+        </div>
+        <div class="install-step">
+          <div class="install-num">3</div>
+          <div class="install-text">
+            Start tunnel while server runs: <code>ngrok http 5000</code> — copy the <code>https://xxxx.ngrok-free.app</code> URL into the web app's URL banner.
+          </div>
+        </div>
+        <div class="install-step">
+          <div class="install-num">4</div>
+          <div class="install-text">
+            Kill ngrok when done flying. URL becomes invalid immediately — no residual exposure.
+          </div>
+        </div>
+      </div>
+      <div class="docs-note">
+        <span class="docs-icon">ℹ️</span>
+        <span>ngrok free tier gives one tunnel, one concurrent connection. Good enough for a single operator. The URL changes every restart unless you configure a static domain (paid plan).</span>
+      </div>
+    </section>
+
+    <!-- Serving -->
+    <section class="docs-section" id="serving">
+      <h2 class="docs-h2">Serving the Web App</h2>
+      <p class="docs-p">Three options depending on your use case:</p>
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>How</th><th>Works on mobile?</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Open HTML directly</td>
+            <td>Double-click <code>index.html</code> in file explorer</td>
+            <td>No (file:// blocked on Android/iOS)</td>
+            <td>Simplest. Desktop Chrome/Firefox only.</td>
+          </tr>
+          <tr>
+            <td>Local HTTP server</td>
+            <td><code>cd webapp &amp;&amp; python -m http.server 8080</code> on PC or Pi, then visit <code>http://&lt;ip&gt;:8080</code></td>
+            <td>Yes (same Wi-Fi)</td>
+            <td>Best option for field use. Pi can serve both the API (port 5000) and the web app (port 8080).</td>
+          </tr>
+          <tr>
+            <td>GitHub Pages / Netlify</td>
+            <td>Push <code>webapp/</code> folder to a repo, enable Pages</td>
+            <td>Yes</td>
+            <td>Requires ngrok on Pi for HTTPS. URL is permanent — no need to re-enter after reconnect.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="docs-p">
+        Recommended field setup: Pi serves the web app on port 8080 and the API on port 5000.
+        Phone connects to Pi's hotspot, opens <code>http://10.42.0.1:8080</code>, enters
+        <code>http://10.42.0.1:5000</code> as the server URL. No internet needed.
+      </p>
+      <pre class="code-block"># On Pi — run both in parallel
+python new_api_server.py &amp;
+cd /path/to/webapp &amp;&amp; python -m http.server 8080</pre>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── Bottom Tab Nav ─────────────────────────────────── -->
+<nav class="nav-bottom">
+  <div class="tab-links">
+    <a href="index.html" class="tab-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="control.html" class="tab-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Control
+    </a>
+    <a href="settings.html" class="tab-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Settings
+    </a>
+    <a href="docs.html" class="tab-link active">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      Docs
+    </a>
+  </div>
+</nav>
+
+<script>
+  function setActive(el) {
+    document.querySelectorAll('.docs-nav-link').forEach(a => a.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // Scrollspy: highlight sidebar link matching visible section
+  const sections = document.querySelectorAll('.docs-section');
+  const navLinks  = document.querySelectorAll('.docs-nav-link');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => { if (window.scrollY >= s.offsetTop - 120) current = s.id; });
+    navLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  }, { passive: true });
+</script>
+</body>
+</html>

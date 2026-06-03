@@ -72,6 +72,7 @@ const Drone = (() => {
     const cls = (id, c) => { const el = document.getElementById(id); if (el) el.className = c; };
 
     set('tel-mode',   d.mode ?? '--');
+    set('tel-range',  d.rangefinder != null ? d.rangefinder.toFixed(2) + ' m'   : '--');
     set('tel-alt',    d.altitude    != null ? d.altitude.toFixed(2)    + ' m'   : '--');
     set('tel-spd',    d.groundspeed != null ? d.groundspeed.toFixed(1) + ' m/s' : '--');
     set('tel-airspd', d.airspeed    != null ? d.airspeed.toFixed(1)    + ' m/s' : '--');
