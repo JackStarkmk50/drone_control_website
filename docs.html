@@ -59,6 +59,7 @@
       <a href="#api-movement" class="docs-nav-link" onclick="setActive(this)">Movement</a>
       <a href="#api-system" class="docs-nav-link" onclick="setActive(this)">System & Config</a>
       <a href="#api-camera" class="docs-nav-link" onclick="setActive(this)">Camera & Queue</a>
+      <a href="#api-wifi" class="docs-nav-link" onclick="setActive(this)">WiFi Management</a>
     </div>
     <div class="docs-sidenav-group">
       <div class="docs-sidenav-title">Hardware & Deployment</div>
@@ -90,7 +91,7 @@
       </div>
       <h2 class="docs-h2">What each page does</h2>
       <ul class="docs-ul">
-        <li><strong>Dashboard (index.html)</strong> — live telemetry grid (19 fields), ARM/DISARM/TAKEOFF/LAND/RTL/HOLD, emergency stop, flight mode selector, console log.</li>
+        <li><strong>Dashboard (index.html)</strong> — live telemetry grid (20 fields including rangefinder), ARM/DISARM/TAKEOFF/LAND/RTL/HOLD, emergency stop, flight mode selector, console log.</li>
         <li><strong>Controller (control.html)</strong> — gamepad-style directional controls (D-pad), altitude up/down, yaw rotate, hold-to-repeat movement, keyboard support (WASD/arrows/Q/E/R/F), haptic feedback on mobile.</li>
         <li><strong>Settings (settings.html)</strong> — safety switch, level calibration, MAVLink parameter read/write, server health check, live camera feed, command queue management.</li>
         <li><strong>Docs (docs.html)</strong> — this page.</li>
@@ -303,18 +304,18 @@ if __name__ == '__main__':
       <div class="tel-ref-grid">
         <div class="tel-ref-item"><div class="tel-ref-key">mode</div><div class="tel-ref-type">string</div><div class="tel-ref-desc">Flight mode name, e.g. "GUIDED"</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">armed</div><div class="tel-ref-type">bool</div><div class="tel-ref-desc">True when motors armed</div></div>
-        <div class="tel-ref-item"><div class="tel-ref-key">altitude</div><div class="tel-ref-type">float (m)</div><div class="tel-ref-desc">Relative altitude above home</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">rangefinder</div><div class="tel-ref-type">float (m)</div><div class="tel-ref-desc">Distance from rangefinder sensor. Used as altitude source when GPS unavailable (GUIDED_NOGPS). Returns 0.0 if sensor absent.</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">altitude</div><div class="tel-ref-type">float (m)</div><div class="tel-ref-desc">Relative altitude above home from barometer/EKF</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">lat / lon</div><div class="tel-ref-type">float (°)</div><div class="tel-ref-desc">GPS position, 6 decimal places</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">groundspeed</div><div class="tel-ref-type">float (m/s)</div><div class="tel-ref-desc">Speed over ground</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">airspeed</div><div class="tel-ref-type">float (m/s)</div><div class="tel-ref-desc">Airspeed from pitot (if fitted)</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">pitch / roll / yaw</div><div class="tel-ref-type">float (rad)</div><div class="tel-ref-desc">Attitude angles in radians — UI converts to degrees</div></div>
-        <div class="tel-ref-item"><div class="tel-ref-key">battery</div><div class="tel-ref-type">float (V)</div><div class="tel-ref-desc">Pack voltage. Red &lt;10.5V, amber &lt;11.2V</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">battery</div><div class="tel-ref-type">float (V)</div><div class="tel-ref-desc">Pack voltage. Red &lt;10.5V, amber &lt;11.2V. Takeoff blocked below 13.2V (4S minimum).</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">battery_level</div><div class="tel-ref-type">int (%)</div><div class="tel-ref-desc">State of charge 0–100</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">satellites</div><div class="tel-ref-type">int</div><div class="tel-ref-desc">GPS satellites visible</div></div>
-        <div class="tel-ref-item"><div class="tel-ref-key">gps_fix</div><div class="tel-ref-type">int (0–6)</div><div class="tel-ref-desc">Fix type. 3 = 3D fix (GPS OK)</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">gps_fix</div><div class="tel-ref-type">int (0–6)</div><div class="tel-ref-desc">Fix type. 3 = 3D fix (GPS OK). RTL blocked below 3.</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">ekf_ok</div><div class="tel-ref-type">bool</div><div class="tel-ref-desc">EKF health flag from DroneKit</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">is_armable</div><div class="tel-ref-type">bool</div><div class="tel-ref-desc">True when pre-arm checks pass</div></div>
-        <div class="tel-ref-item"><div class="tel-ref-key">vibe_x / y / z</div><div class="tel-ref-type">float (m/s²)</div><div class="tel-ref-desc">IMU vibration per axis</div></div>
       </div>
     </section>
 
@@ -329,33 +330,49 @@ if __name__ == '__main__':
       <table class="api-table">
         <thead><tr><th>Method</th><th>Endpoint</th><th>Body</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><span class="method post">POST</span></td><td class="ep">/arm</td><td>—</td><td>Arm motors. Vehicle must be armable (EKF OK, GPS fix, pre-arm clear).</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/arm</td><td>—</td><td>Arm motors asynchronously (returns immediately). Waits up to 15 s in a daemon thread. Vehicle must pass pre-arm checks (EKF OK, GPS fix or GUIDED_NOGPS, no failures).</td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/disarm</td><td>—</td><td>Disarm motors. Safe to call at any time.</td></tr>
-          <tr><td><span class="method post">POST</span></td><td class="ep">/takeoff</td><td><span class="body-tag">altitude: float</span></td><td>Takeoff to altitude in metres (relative to home). Drone must be armed in GUIDED mode.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/takeoff</td><td><span class="body-tag">altitude: float</span></td><td>Arm + takeoff to altitude in metres (0.5–10 m). <strong>Blocked if battery &lt; 13.2 V (4S minimum).</strong> With GPS uses <code>simple_takeoff</code>; without GPS uses rangefinder + thrust control to reach target altitude.</td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/land</td><td>—</td><td>Set mode to LAND. Vehicle descends and disarms automatically.</td></tr>
-          <tr><td><span class="method post">POST</span></td><td class="ep">/rtl</td><td>—</td><td>Return to launch. Climbs to RTL_ALT, flies home, lands.</td></tr>
-          <tr><td><span class="method post">POST</span></td><td class="ep">/hold</td><td>—</td><td>Loiter in place (sets LOITER or POSHOLD mode).</td></tr>
-          <tr><td><span class="method post">POST</span></td><td class="ep">/emergency</td><td>—</td><td>Immediate motor cutoff. <strong>Use only on ground or if crash is unavoidable.</strong></td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/rtl</td><td>—</td><td>Return to launch. <strong>Blocked if GPS fix &lt; 3.</strong> Climbs to RTL_ALT, flies home, lands.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/hold</td><td>—</td><td>Hold position. With GPS: sets LOITER mode. Without GPS: stays in GUIDED_NOGPS and sends zero velocity — optical flow holds XY position and altitude.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/emergency</td><td>—</td><td>Immediate LAND + disarm. Bypasses command lock. <strong>Use only on ground or if crash is unavoidable.</strong></td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/mode</td><td><span class="body-tag">mode: string</span></td><td>Set flight mode by name. Valid: STABILIZE, ALTHOLD, LOITER, GUIDED, GUIDED_NOGPS, LAND, RTL, AUTO, POSHOLD.</td></tr>
         </tbody>
       </table>
 
-      <span class="code-label">Example implementation — /arm</span>
-      <pre class="code-block">@app.route('/arm', methods=['POST'])
-def arm():
+      <span class="code-label">Example implementation — /arm (async, non-blocking)</span>
+      <pre class="code-block">_cmd_lock = threading.Lock()
+
+def _arm_drone():
+    """Daemon thread — releases lock when done."""
     try:
-        vehicle.mode = dronekit.VehicleMode('GUIDED')
         vehicle.armed = True
-        # Wait up to 5s for arming
-        for _ in range(50):
-            if vehicle.armed:
-                break
-            time.sleep(0.1)
+        start = time.time()
+        while not vehicle.armed:
+            if time.time() - start > 15:
+                print("Arm timeout")
+                return
+            time.sleep(0.5)
+        print("Armed!")
+    finally:
+        _cmd_lock.release()
+
+@app.route('/arm', methods=['POST'])
+def arm():
+    if not _cmd_lock.acquire(blocking=False):
+        return jsonify({'success': False, 'message': 'Another command in progress'}), 409
+    try:
         if vehicle.armed:
-            return jsonify({'success': True, 'message': 'Armed'})
-        return jsonify({'success': False, 'error': 'Arming timeout'})
+            _cmd_lock.release()
+            return jsonify({'success': False, 'message': 'Already armed'})
+        t = threading.Thread(target=_arm_drone)
+        t.daemon = True
+        t.start()
+        return jsonify({'success': True, 'message': 'Arming...'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})</pre>
+        _cmd_lock.release()
+        return jsonify({'success': False, 'message': str(e)})</pre>
 
       <span class="code-label">Example implementation — /takeoff</span>
       <pre class="code-block">@app.route('/takeoff', methods=['POST'])
@@ -388,7 +405,7 @@ def takeoff():
               <span class="body-tag">distance: float (m)</span><br>
               <span class="body-tag">speed: float (m/s)</span>
             </td>
-            <td>Move in <code>forward</code>, <code>backward</code>, <code>left</code>, or <code>right</code>. Uses <code>send_ned_velocity</code> or <code>simple_goto</code> offset in GUIDED mode.</td>
+            <td>Move in <code>forward</code>, <code>backward</code>, <code>left</code>, <code>right</code>, <code>up</code>, or <code>down</code>. Uses NED body-frame velocity. <strong>Max speed: 1.5 m/s</strong> (optical flow sensor limit). Auto-switches to GUIDED_NOGPS if not already in a GUIDED mode. Runs asynchronously.</td>
           </tr>
           <tr>
             <td><span class="method post">POST</span></td>
@@ -503,25 +520,101 @@ def param():
         </tbody>
       </table>
 
-      <span class="code-label">Minimal MJPEG video feed (Pi Camera + picamera2)</span>
-      <pre class="code-block">from picamera2 import Picamera2
-import cv2, io
+      <span class="code-label">MJPEG video feed — OpenCV + V4L2 (used in new_api_server_1.py)</span>
+      <pre class="code-block">import cv2, threading
 
-cam = Picamera2()
-cam.configure(cam.create_video_configuration(main={'size': (640, 480)}))
-cam.start()
+camera      = None
+camera_lock = threading.Lock()
+JPEG_Q      = 70   # quality 0–100
+
+def start_camera():
+    global camera
+    with camera_lock:
+        if camera is not None:
+            return
+    cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L2)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    cap.set(cv2.CAP_PROP_FPS, 10)
+    import time; time.sleep(1)   # let V4L2 driver settle
+    with camera_lock:
+        if cap.isOpened():
+            camera = cap
 
 def gen_frames():
+    start_camera()
     while True:
-        buf = io.BytesIO()
-        cam.capture_file(buf, format='jpeg')
-        frame = buf.getvalue()
-        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        with camera_lock:
+            cap = camera
+        if cap is None:
+            break
+        ok, frame = cap.read()
+        if not ok:
+            continue
+        _, buf = cv2.imencode('.jpg', frame,
+                              [cv2.IMWRITE_JPEG_QUALITY, JPEG_Q])
+        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'
+               + buf.tobytes() + b'\r\n')
 
 @app.route('/video_feed')
 def video_feed():
-    from flask import Response
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')</pre>
+    return Response(gen_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')</pre>
+    </section>
+
+    <!-- WiFi Management -->
+    <section class="docs-section" id="api-wifi">
+      <h2 class="docs-h2">API Reference — WiFi Management</h2>
+      <p class="docs-p">
+        The server can scan and connect to WiFi networks via <code>nmcli</code> on the Pi.
+        Useful for switching the Pi onto a hotspot in the field without SSH access.
+      </p>
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>Endpoint</th><th>Body / Params</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td class="ep">/wifi/scan</td>
+            <td>—</td>
+            <td>Returns list of visible networks. Each entry: <code>ssid</code>, <code>signal</code> (0–100), <code>security</code>.</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td class="ep">/wifi/connect</td>
+            <td><span class="body-tag">ssid: string</span> <span class="body-tag">password: string</span></td>
+            <td>Connect Pi to a WiFi network. Uses <code>sudo nmcli device wifi connect</code>. Times out after 30 s if association fails.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <span class="code-label">Auto-reconnect daemon (running at startup)</span>
+      <pre class="code-block"># On startup the server:
+# 1. Connects to configured SSID
+# 2. Launches wifi_monitor_loop as daemon thread
+# 3. Monitor checks connectivity every 15 s and reconnects if dropped
+
+def wifi_monitor_loop(ssid, password=None):
+    while True:
+        time.sleep(15)
+        if not is_wifi_connected():
+            scan_networks()
+            if is_ssid_available(ssid):
+                connect_wifi(ssid, password)
+
+# Startup sequence in __main__:
+connect_wifi(ssid=WIFI_SSID, password=WIFI_PASS)
+monitor = threading.Thread(target=wifi_monitor_loop, args=(WIFI_SSID, WIFI_PASS))
+monitor.daemon = True
+monitor.start()
+
+# ngrok tunnel auto-starts after WiFi is up:
+ngrok_process = subprocess.Popen(['ngrok', 'http', '5000'], ...)</pre>
+
+      <div class="docs-note">
+        <span class="docs-icon">ℹ️</span>
+        <span><code>sudo</code> is required for <code>nmcli device wifi connect</code>. Add the Pi user to sudoers for nmcli, or set <code>NOPASSWD</code> for that command in <code>/etc/sudoers</code> to avoid password prompts.</span>
+      </div>
     </section>
 
     <!-- Hardware -->
