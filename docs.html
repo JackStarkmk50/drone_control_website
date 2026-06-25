@@ -93,7 +93,7 @@
       <ul class="docs-ul">
         <li><strong>Dashboard (index.html)</strong> — live telemetry grid (20 fields including rangefinder), ARM/DISARM/TAKEOFF/LAND/RTL/HOLD, emergency stop, flight mode selector, console log.</li>
         <li><strong>Controller (control.html)</strong> — gamepad-style directional controls (D-pad), altitude up/down, yaw rotate, hold-to-repeat movement, keyboard support (WASD/arrows/Q/E/R/F), haptic feedback on mobile.</li>
-        <li><strong>Settings (settings.html)</strong> — safety switch, level calibration, MAVLink parameter read/write, server health check, live camera feed, command queue management.</li>
+        <li><strong>Settings (settings.html)</strong> — safety switch, level calibration, MAVLink parameter read/write, server health check, live camera feed, command queue management, WiFi network scan &amp; connect.</li>
         <li><strong>Docs (docs.html)</strong> — this page.</li>
       </ul>
     </section>
@@ -251,7 +251,7 @@ def get_status_data():
 @app.after_request
 def add_cors(r):
     r.headers['Access-Control-Allow-Origin']  = '*'
-    r.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    r.headers['Access-Control-Allow-Headers'] = 'Content-Type, ngrok-skip-browser-warning'
     r.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
     return r
 
@@ -310,7 +310,7 @@ if __name__ == '__main__':
         <div class="tel-ref-item"><div class="tel-ref-key">groundspeed</div><div class="tel-ref-type">float (m/s)</div><div class="tel-ref-desc">Speed over ground</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">airspeed</div><div class="tel-ref-type">float (m/s)</div><div class="tel-ref-desc">Airspeed from pitot (if fitted)</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">pitch / roll / yaw</div><div class="tel-ref-type">float (rad)</div><div class="tel-ref-desc">Attitude angles in radians — UI converts to degrees</div></div>
-        <div class="tel-ref-item"><div class="tel-ref-key">battery</div><div class="tel-ref-type">float (V)</div><div class="tel-ref-desc">Pack voltage. Red &lt;10.5V, amber &lt;11.2V. Takeoff blocked below 13.2V (4S minimum).</div></div>
+        <div class="tel-ref-item"><div class="tel-ref-key">battery</div><div class="tel-ref-type">float (V)</div><div class="tel-ref-desc">Pack voltage (4S). Red &lt;13.2V, amber &lt;14.0V, green ≥14.0V. Takeoff blocked below 13.2V.</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">battery_level</div><div class="tel-ref-type">int (%)</div><div class="tel-ref-desc">State of charge 0–100</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">satellites</div><div class="tel-ref-type">int</div><div class="tel-ref-desc">GPS satellites visible</div></div>
         <div class="tel-ref-item"><div class="tel-ref-key">gps_fix</div><div class="tel-ref-type">int (0–6)</div><div class="tel-ref-desc">Fix type. 3 = 3D fix (GPS OK). RTL blocked below 3.</div></div>
@@ -331,11 +331,11 @@ if __name__ == '__main__':
         <thead><tr><th>Method</th><th>Endpoint</th><th>Body</th><th>Description</th></tr></thead>
         <tbody>
           <tr><td><span class="method post">POST</span></td><td class="ep">/arm</td><td>—</td><td>Arm motors asynchronously (returns immediately). Waits up to 15 s in a daemon thread. Vehicle must pass pre-arm checks (EKF OK, GPS fix or GUIDED_NOGPS, no failures).</td></tr>
-          <tr><td><span class="method post">POST</span></td><td class="ep">/disarm</td><td>—</td><td>Disarm motors. Safe to call at any time.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/disarm</td><td>—</td><td>Disarm motors. <strong>Blocked if rangefinder &gt; 0.17 m</strong> (drone must be on the ground). Returns 400 if altitude check fails.</td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/takeoff</td><td><span class="body-tag">altitude: float</span></td><td>Arm + takeoff to altitude in metres (0.5–10 m). <strong>Blocked if battery &lt; 13.2 V (4S minimum).</strong> With GPS uses <code>simple_takeoff</code>; without GPS uses rangefinder + thrust control to reach target altitude.</td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/land</td><td>—</td><td>Set mode to LAND. Vehicle descends and disarms automatically.</td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/rtl</td><td>—</td><td>Return to launch. <strong>Blocked if GPS fix &lt; 3.</strong> Climbs to RTL_ALT, flies home, lands.</td></tr>
-          <tr><td><span class="method post">POST</span></td><td class="ep">/hold</td><td>—</td><td>Hold position. With GPS: sets LOITER mode. Without GPS: stays in GUIDED_NOGPS and sends zero velocity — optical flow holds XY position and altitude.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/hold</td><td>—</td><td>Set LOITER mode and cancel any active movement or takeoff. Also cancels hold-to-repeat motion from the controller page.</td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/emergency</td><td>—</td><td>Immediate LAND + disarm. Bypasses command lock. <strong>Use only on ground or if crash is unavoidable.</strong></td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/mode</td><td><span class="body-tag">mode: string</span></td><td>Set flight mode by name. Valid: STABILIZE, ALTHOLD, LOITER, GUIDED, GUIDED_NOGPS, LAND, RTL, AUTO, POSHOLD.</td></tr>
         </tbody>
@@ -405,7 +405,7 @@ def takeoff():
               <span class="body-tag">distance: float (m)</span><br>
               <span class="body-tag">speed: float (m/s)</span>
             </td>
-            <td>Move in <code>forward</code>, <code>backward</code>, <code>left</code>, <code>right</code>, <code>up</code>, or <code>down</code>. Uses NED body-frame velocity. <strong>Max speed: 1.5 m/s</strong> (optical flow sensor limit). Auto-switches to GUIDED_NOGPS if not already in a GUIDED mode. Runs asynchronously.</td>
+            <td>Move in <code>forward</code>, <code>backward</code>, <code>left</code>, <code>right</code>, <code>up</code>, or <code>down</code>. Uses NED body-frame velocity. <strong>Speed must be 0.2–0.3 m/s</strong> (indoor AI limit — 400 returned otherwise). Auto-switches to GUIDED_NOGPS if not already in a GUIDED mode. Runs asynchronously; switches back to LOITER when done.</td>
           </tr>
           <tr>
             <td><span class="method post">POST</span></td>
@@ -514,9 +514,11 @@ def param():
         <thead><tr><th>Method</th><th>Endpoint</th><th>Body</th><th>Description</th></tr></thead>
         <tbody>
           <tr><td><span class="method get">GET</span></td><td class="ep">/video_feed</td><td>—</td><td>MJPEG stream from Pi camera. Set as <code>&lt;img src="..."&gt;</code> to display live feed. Requires PiCamera or OpenCV capture.</td></tr>
-          <tr><td><span class="method get">GET</span></td><td class="ep">/queue/status</td><td>—</td><td>Returns current command queue as JSON array. Each item has <code>command</code> and <code>params</code>.</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep">/camera/start</td><td>—</td><td>Open the V4L2 camera device and start the frame capture loop.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/camera/stop</td><td>—</td><td>Release the camera and stop the stream.</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep">/queue/status</td><td>—</td><td>Returns current command queue depth and items. Each item has <code>action</code> and <code>params</code>.</td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/queue/clear</td><td>—</td><td>Flush the entire command queue.</td></tr>
-          <tr><td><span class="method post">POST</span></td><td class="ep">/queue/add</td><td><span class="body-tag">command: string</span> <span class="body-tag">params: object</span></td><td>Push a command onto the queue. Queue worker executes them in order.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/queue/add</td><td><span class="body-tag">action: string</span> <span class="body-tag">params: object</span></td><td>Push a command onto the queue (write-only for now — future mission sequencer will auto-execute).</td></tr>
         </tbody>
       </table>
 
@@ -575,13 +577,13 @@ def video_feed():
         <tbody>
           <tr>
             <td><span class="method get">GET</span></td>
-            <td class="ep">/wifi/scan</td>
+            <td class="ep">/wifi/scan<br><span style="color:var(--text3);font-size:.75rem">/network/scan</span></td>
             <td>—</td>
-            <td>Returns list of visible networks. Each entry: <code>ssid</code>, <code>signal</code> (0–100), <code>security</code>.</td>
+            <td>Returns list of visible networks. Each entry: <code>ssid</code>, <code>signal</code> (0–100), <code>security</code>. The <code>/network/*</code> paths are aliases used by the Settings page UI.</td>
           </tr>
           <tr>
             <td><span class="method post">POST</span></td>
-            <td class="ep">/wifi/connect</td>
+            <td class="ep">/wifi/connect<br><span style="color:var(--text3);font-size:.75rem">/network/connect</span></td>
             <td><span class="body-tag">ssid: string</span> <span class="body-tag">password: string</span></td>
             <td>Connect Pi to a WiFi network. Uses <code>sudo nmcli device wifi connect</code>. Times out after 30 s if association fails.</td>
           </tr>
@@ -680,6 +682,16 @@ v.close()
       <div class="docs-note">
         <span class="docs-icon">ℹ️</span>
         <span>ngrok free tier gives one tunnel, one concurrent connection. Good enough for a single operator. The URL changes every restart unless you configure a static domain (paid plan).</span>
+      </div>
+      <div class="docs-warn" style="margin-top:.75rem">
+        <span class="docs-icon">⚠️</span>
+        <span><strong>ngrok browser warning / CORS.</strong> ngrok intercepts requests that lack the
+        <code>ngrok-skip-browser-warning: true</code> header and returns an HTML warning page —
+        which has no CORS headers, causing a CORS block in the browser.
+        The web app sends this header automatically on every request.
+        The server must also allow it in preflight via
+        <code>Access-Control-Allow-Headers: ngrok-skip-browser-warning</code>
+        (the <code>after_request</code> hook in the skeleton above does this).</span>
       </div>
     </section>
 
