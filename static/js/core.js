@@ -105,7 +105,7 @@ const Drone = (() => {
     const bEl = document.getElementById('tel-bat');
     if (bEl && d.battery != null) {
       bEl.textContent = d.battery.toFixed(1) + 'V';
-      bEl.className = 'tel-val ' + (d.battery < 10.5 ? 'r' : d.battery < 11.2 ? 'a' : 'g');
+      bEl.className = 'tel-val ' + (d.battery < 13.2 ? 'r' : d.battery < 14.0 ? 'a' : 'g');
     }
     set('tel-batpct', d.battery_level != null ? d.battery_level + '%' : '');
 
@@ -115,7 +115,7 @@ const Drone = (() => {
     const pbEl = document.getElementById('pill-bat');
     if (pbEl && d.battery != null) {
       pbEl.textContent = d.battery.toFixed(1) + 'V';
-      pbEl.className = 'pill-val ' + (d.battery < 10.5 ? 'red' : d.battery < 11.2 ? 'amber' : 'green');
+      pbEl.className = 'pill-val ' + (d.battery < 13.2 ? 'red' : d.battery < 14.0 ? 'amber' : 'green');
     }
     const paEl = document.getElementById('pill-armed');
     if (paEl) { paEl.textContent = d.armed ? 'ARMED' : 'SAFE'; paEl.className = 'pill-val ' + (d.armed ? 'red' : 'green'); }

@@ -201,6 +201,24 @@
       </div>
     </div>
 
+    <!-- WiFi Management -->
+    <div class="card">
+      <div class="card-title flex justify-b items-c" style="margin-bottom:.875rem">
+        <span class="flex items-c gap-2"><span class="accent"></span>WiFi Management</span>
+        <button class="btn btn-g btn-sm" onclick="wifiScan()">Scan</button>
+      </div>
+
+      <div class="flex gap-2 mb-2">
+        <input id="wifi-ssid" class="input" placeholder="SSID" style="flex:2" autocomplete="off" spellcheck="false">
+        <input id="wifi-pass" class="input" placeholder="Password" type="password" style="flex:2">
+        <button class="btn btn-p btn-sm" onclick="wifiConnect()">Connect</button>
+      </div>
+
+      <div class="queue-list" id="wifi-list">
+        <div class="queue-item" style="color:var(--text3);justify-content:center">Press Scan to list networks</div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Console -->
@@ -337,6 +355,33 @@ async function addToQueue() {
     document.getElementById('q-params').value = '';
     refreshQueue();
   }
+}
+
+/* ── WiFi ────────────────────────────────────────────── */
+async function wifiScan() {
+  const data = await Drone.api('/network/scan');
+  if (!data) return;
+  const list = document.getElementById('wifi-list');
+  if (!data.networks || data.networks.length === 0) {
+    list.innerHTML = '<div class="queue-item" style="color:var(--text3);justify-content:center">No networks found</div>';
+    return;
+  }
+  list.innerHTML = data.networks.map(n =>
+    `<div class="queue-item" style="cursor:pointer" onclick="document.getElementById('wifi-ssid').value='${n.ssid.replace(/'/g,"\\'")}'" title="Click to fill SSID">
+      <span class="queue-action">${n.ssid}</span>
+      <span style="color:var(--text3)">${n.signal}%</span>
+      <span style="color:var(--text3);font-size:.6875rem">${n.security || 'open'}</span>
+    </div>`
+  ).join('');
+}
+
+async function wifiConnect() {
+  const ssid = document.getElementById('wifi-ssid').value.trim();
+  const pass = document.getElementById('wifi-pass').value;
+  if (!ssid) return Drone.log('Enter an SSID first', 'warn');
+  const body = { ssid };
+  if (pass) body.password = pass;
+  await Drone.api('/network/connect', body);
 }
 
 /* ── Auto refresh health on load ─────────────────────── */
