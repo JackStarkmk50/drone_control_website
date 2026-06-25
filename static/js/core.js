@@ -129,7 +129,9 @@ const Drone = (() => {
     if (!url) { log('No server URL — click connection badge to configure', 'error'); return null; }
 
     const isGet = body === null && (endpoint.includes('?') || ['/status', '/health', '/queue/status'].includes(endpoint));
-    const opts = { method: isGet ? 'GET' : 'POST', headers: isGet ? {} : { 'Content-Type': 'application/json' } };
+    const headers = { 'ngrok-skip-browser-warning': 'true' };
+    if (!isGet) headers['Content-Type'] = 'application/json';
+    const opts = { method: isGet ? 'GET' : 'POST', headers };
     if (body) opts.body = JSON.stringify(body);
 
     try {
