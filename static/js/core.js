@@ -128,7 +128,7 @@ const Drone = (() => {
     const url = getSavedUrl();
     if (!url) { log('No server URL — click connection badge to configure', 'error'); return null; }
 
-    const isGet = body === null && (endpoint.includes('?') || ['/status', '/health', '/queue/status'].includes(endpoint));
+    const isGet = body === null && (endpoint.includes('?') || ['/status', '/health', '/queue/status', '/network/scan', '/mission/status'].includes(endpoint));
     const headers = { 'ngrok-skip-browser-warning': 'true' };
     if (!isGet) headers['Content-Type'] = 'application/json';
     const opts = { method: isGet ? 'GET' : 'POST', headers };

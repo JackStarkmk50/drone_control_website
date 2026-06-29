@@ -59,6 +59,7 @@
       <a href="#api-movement" class="docs-nav-link" onclick="setActive(this)">Movement</a>
       <a href="#api-system" class="docs-nav-link" onclick="setActive(this)">System & Config</a>
       <a href="#api-camera" class="docs-nav-link" onclick="setActive(this)">Camera & Queue</a>
+      <a href="#api-mission" class="docs-nav-link sub" onclick="setActive(this)">Mission Sequencer</a>
       <a href="#api-wifi" class="docs-nav-link" onclick="setActive(this)">WiFi Management</a>
     </div>
     <div class="docs-sidenav-group">
@@ -332,10 +333,10 @@ if __name__ == '__main__':
         <tbody>
           <tr><td><span class="method post">POST</span></td><td class="ep">/arm</td><td>—</td><td>Arm motors asynchronously (returns immediately). Waits up to 15 s in a daemon thread. Vehicle must pass pre-arm checks (EKF OK, GPS fix or GUIDED_NOGPS, no failures).</td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/disarm</td><td>—</td><td>Disarm motors. <strong>Blocked if rangefinder &gt; 0.17 m</strong> (drone must be on the ground). Returns 400 if altitude check fails.</td></tr>
-          <tr><td><span class="method post">POST</span></td><td class="ep">/takeoff</td><td><span class="body-tag">altitude: float</span></td><td>Arm + takeoff to altitude in metres (0.5–10 m). <strong>Blocked if battery &lt; 13.2 V (4S minimum).</strong> With GPS uses <code>simple_takeoff</code>; without GPS uses rangefinder + thrust control to reach target altitude.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/takeoff</td><td><span class="body-tag">altitude: float</span></td><td>Takeoff to altitude in metres (0.5–10 m). <strong>Blocked if battery &lt; 13.2 V (4S minimum).</strong> Switches to GUIDED_NOGPS, arms motors, climbs using thrust control with rangefinder altitude feedback. Returns immediately — flight runs in a daemon thread (up to 30 s timeout).</td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/land</td><td>—</td><td>Set mode to LAND. Vehicle descends and disarms automatically.</td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/rtl</td><td>—</td><td>Return to launch. <strong>Blocked if GPS fix &lt; 3.</strong> Climbs to RTL_ALT, flies home, lands.</td></tr>
-          <tr><td><span class="method post">POST</span></td><td class="ep">/hold</td><td>—</td><td>Set LOITER mode and cancel any active movement or takeoff. Also cancels hold-to-repeat motion from the controller page.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/hold</td><td>—</td><td>Cancel any active movement, send zero-velocity stop, and hold in <strong>GUIDED_NOGPS</strong> mode. Safe to call mid-move. Also cancels hold-to-repeat motion from the controller page.</td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/emergency</td><td>—</td><td>Immediate LAND + disarm. Bypasses command lock. <strong>Use only on ground or if crash is unavoidable.</strong></td></tr>
           <tr><td><span class="method post">POST</span></td><td class="ep">/mode</td><td><span class="body-tag">mode: string</span></td><td>Set flight mode by name. Valid: STABILIZE, ALTHOLD, LOITER, GUIDED, GUIDED_NOGPS, LAND, RTL, AUTO, POSHOLD.</td></tr>
         </tbody>
@@ -374,16 +375,16 @@ def arm():
         _cmd_lock.release()
         return jsonify({'success': False, 'message': str(e)})</pre>
 
-      <span class="code-label">Example implementation — /takeoff</span>
-      <pre class="code-block">@app.route('/takeoff', methods=['POST'])
-def takeoff():
-    data = request.get_json(force=True) or {}
-    alt  = float(data.get('altitude', 2))
-    try:
-        vehicle.simple_takeoff(alt)
-        return jsonify({'success': True, 'message': f'Taking off to {alt}m'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})</pre>
+      <span class="code-label">Implementation — /takeoff (MovementController, GUIDED_NOGPS + thrust)</span>
+      <pre class="code-block"># mc.takeoff(altitude_m) does:
+#   1. Switch to GUIDED_NOGPS
+#   2. Read MOT_THST_HOVER param; set climb_thrust = hover + 0.08
+#   3. Arm via vehicle.armed = True (polls up to 15 s)
+#   4. Send SET_ATTITUDE_TARGET with climb_thrust each 100 ms
+#   5. Read rangefinder.distance each tick — stop when ≥ 90% of target
+#   6. Settle 2 s at hover thrust
+#   7. Return {"ok": True, "message": "Takeoff to Xm complete"}
+# /takeoff endpoint runs mc.takeoff() in a daemon thread, returns "Taking off..." immediately</pre>
     </section>
 
     <!-- API: Movement -->
@@ -405,7 +406,7 @@ def takeoff():
               <span class="body-tag">distance: float (m)</span><br>
               <span class="body-tag">speed: float (m/s)</span>
             </td>
-            <td>Move in <code>forward</code>, <code>backward</code>, <code>left</code>, <code>right</code>, <code>up</code>, or <code>down</code>. Uses NED body-frame velocity. <strong>Speed must be 0.2–0.3 m/s</strong> (indoor AI limit — 400 returned otherwise). Auto-switches to GUIDED_NOGPS if not already in a GUIDED mode. Runs asynchronously; switches back to LOITER when done.</td>
+            <td>Move in <code>forward</code>, <code>backward</code>, <code>left</code>, <code>right</code>, <code>up</code>, or <code>down</code>. Uses <strong>NED local-frame position targeting</strong> (set_position_target_local_ned). Switches to GUIDED_NOGPS, calculates absolute NED target, drives until within 0.15 m at &lt;0.10 m/s. <strong>Speed must be 0.2–0.3 m/s</strong> (indoor AI limit — 400 returned otherwise). Runs asynchronously; /hold is sent automatically on button release.</td></tr>
           </tr>
           <tr>
             <td><span class="method post">POST</span></td>
@@ -420,36 +421,19 @@ def takeoff():
         </tbody>
       </table>
 
-      <span class="code-label">Example implementation — /move (NED velocity)</span>
-      <pre class="code-block">from pymavlink import mavutil
-
-def send_ned_velocity(vx, vy, vz, duration=0):
+      <span class="code-label">Implementation — /move (NED position targeting via MovementController)</span>
+      <pre class="code-block">def _send_position_target_ned(n, e, d):
     msg = vehicle.message_factory.set_position_target_local_ned_encode(
         0, 0, 0,
-        mavutil.mavlink.MAV_FRAME_BODY_NED,
-        0b0000111111000111,   # type_mask: enable velocity only
-        0, 0, 0,              # position (ignored)
-        vx, vy, vz,           # velocity in m/s
-        0, 0, 0,              # accel (ignored)
-        0, 0                  # yaw, yaw_rate (ignored)
+        mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+        0b0000111111111000,   # position only (velocity/accel ignored)
+        n, e, d,              # absolute NED target
+        0, 0, 0, 0, 0, 0, 0, 0
     )
     vehicle.send_mavlink(msg)
 
-@app.route('/move', methods=['POST'])
-def move():
-    data = request.get_json(force=True) or {}
-    direction = data.get('direction', 'forward')
-    speed     = float(data.get('speed', 1))
-
-    mapping = {
-        'forward':  ( speed, 0,      0),
-        'backward': (-speed, 0,      0),
-        'right':    (0,       speed, 0),
-        'left':     (0,      -speed, 0),
-    }
-    vx, vy, vz = mapping.get(direction, (0, 0, 0))
-    send_ned_velocity(vx, vy, vz)
-    return jsonify({'success': True, 'message': f'Moving {direction}'})</pre>
+# mc.move() polls until pos_error &lt; 0.15 m and speed &lt; 0.10 m/s
+# /move endpoint runs mc.move() in a daemon thread, returns immediately</pre>
 
       <span class="code-label">Example implementation — /yaw (condition_yaw)</span>
       <pre class="code-block">@app.route('/yaw', methods=['POST'])
@@ -563,6 +547,56 @@ def gen_frames():
 def video_feed():
     return Response(gen_frames(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')</pre>
+    </section>
+
+    <!-- Mission Sequencer -->
+    <section class="docs-section" id="api-mission">
+      <h2 class="docs-h2">API Reference — Mission Sequencer</h2>
+      <p class="docs-p">
+        The MissionManager runs a list of named steps in sequence, blocking between each one.
+        Steps execute in a daemon thread — the server returns immediately and you poll
+        <code>/mission/status</code> to track progress.
+      </p>
+      <table class="api-table">
+        <thead><tr><th>Method</th><th>Endpoint</th><th>Body</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/mission</td><td><span class="body-tag">steps: array</span></td><td>Start a mission. Each step is an object with a <code>cmd</code> key and optional parameters. Returns 409 if a mission is already running.</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep">/mission/status</td><td>—</td><td>Returns mission state: <code>active</code>, <code>current_step</code>, <code>steps_done</code>, <code>last_result</code>, <code>error</code>.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep">/mission/cancel</td><td>—</td><td>Send cancel signal to the running mission. Current step completes or aborts; subsequent steps are skipped.</td></tr>
+        </tbody>
+      </table>
+
+      <span class="code-label">Available step commands (cmd field)</span>
+      <pre class="code-block">takeoff      altitude (m, default 1.5)
+land
+hold
+hover        duration (s, default 3.0)
+move_forward  distance (m), speed (m/s, default 0.3)
+move_backward distance (m), speed (m/s, default 0.3)
+move_left     distance (m), speed (m/s, default 0.3)
+move_right    distance (m), speed (m/s, default 0.3)
+move_up       distance (m), speed (m/s, default 0.3)
+move_down     distance (m), speed (m/s, default 0.3)
+yaw_right     degrees (default 90), speed deg/s (default 30)
+yaw_left      degrees (default 90), speed deg/s (default 30)</pre>
+
+      <span class="code-label">Example mission request</span>
+      <pre class="code-block">POST /mission
+{
+  "steps": [
+    { "cmd": "takeoff",      "altitude": 1.5 },
+    { "cmd": "move_forward", "distance": 2.0, "speed": 0.3 },
+    { "cmd": "yaw_right",    "degrees": 90 },
+    { "cmd": "move_forward", "distance": 2.0, "speed": 0.3 },
+    { "cmd": "hover",        "duration": 3.0 },
+    { "cmd": "land" }
+  ]
+}</pre>
+      <div class="docs-note">
+        <span class="docs-icon">ℹ️</span>
+        <span>Add <code>"ignore_error": true</code> to a step to continue the mission even if that step fails.
+        Otherwise the first failure aborts the sequence and sets <code>error</code> in the status response.</span>
+      </div>
     </section>
 
     <!-- WiFi Management -->
